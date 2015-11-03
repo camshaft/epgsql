@@ -108,8 +108,14 @@ update_type_cache(C) ->
     Query = "SELECT typname, oid::int4, typarray::int4"
             " FROM pg_type"
             " WHERE typname = ANY($1::varchar[])",
-    {ok, _, TypeInfos} = equery(C, Query, [DynamicTypes]),
-    ok = gen_server:call(C, {update_type_cache, TypeInfos}).
+    case equery(C, Query, [DynamicTypes]) of
+        {ok, _, TypeInfos} ->
+            ok = gen_server:call(C, {update_type_cache, TypeInfos});
+        {error, _Error} ->
+            %% Do not fail connect if we cant update the cache,
+            %% as this can occur for old postgres version (ie AWS redshift)
+            ok
+    end.
 
 -spec close(connection()) -> ok.
 close(C) ->
